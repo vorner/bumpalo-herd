@@ -1,0 +1,6 @@
+/target
+Cargo.lock
+core
+perf.data
+perf.data.old
+tags
