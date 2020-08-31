@@ -1,29 +1,20 @@
 #![feature(thread_id_value)]
 use std::iter;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, TryLockError};
 use std::thread;
 
 use bumpalo::Bump;
-use crossbeam_utils::CachePadded;
-
-struct Slot {
-    arena: Bump,
-    locked: AtomicBool,
-}
 
 pub struct Herd {
-    slots: Vec<CachePadded<Slot>>,
+    slots: Vec<Mutex<Bump>>,
 }
 
 unsafe impl Sync for Herd { }
 
 impl Herd {
     pub fn new() -> Self {
-        let slots = iter::repeat_with(|| Slot {
-                arena: Bump::new(),
-                locked: AtomicBool::new(false),
-            })
-            .map(CachePadded::new)
+        let slots = iter::repeat_with(Bump::new)
+            .map(Mutex::new)
             .take(num_cpus::get())
             .collect();
         Self {
@@ -33,7 +24,7 @@ impl Herd {
 
     pub fn reset(&mut self) {
         for s in &mut self.slots {
-            s.arena.reset();
+            s.get_mut().unwrap().reset();
         }
     }
 
@@ -41,15 +32,20 @@ impl Herd {
         let offset = thread::current().id().as_u64().get() as usize % self.slots.len();
         let seq = iter::repeat(self.slots.iter())
             .flatten()
-            .skip(offset);
+            .skip(offset)
+            .take(self.slots.len());
         for s in seq {
-            if s.locked.compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok() {
-                let result = f(&s.arena);
-                s.locked.store(false, Ordering::Release);
-                return result;
+            match s.try_lock() {
+                Ok(lock) => {
+                    return f(&lock);
+                }
+                Err(TryLockError::WouldBlock) => (),
+                Err(TryLockError::Poisoned(_)) => panic!("Poisoned herd member"),
             }
         }
-        unreachable!();
+
+        // Should not really happen, but can't rule out really.
+        f(&self.slots[offset].lock().unwrap())
     }
 
     pub fn alloc<T>(&self, val: T) -> &T {
