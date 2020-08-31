@@ -1,55 +1,50 @@
-#![feature(thread_id_value)]
-use std::iter;
-use std::sync::{Mutex, TryLockError};
-use std::thread;
+use std::sync::Mutex;
 
 use bumpalo::Bump;
 
-pub struct Herd {
-    slots: Vec<Mutex<Bump>>,
+#[derive(Default)]
+struct HerdInner {
+    extra: Vec<Box<Bump>>,
 }
 
-unsafe impl Sync for Herd { }
+#[derive(Default)]
+pub struct Herd(Mutex<HerdInner>);
+
+pub struct Member<'h> {
+    arena: Option<Box<Bump>>,
+    owner: &'h Herd,
+}
+
+impl<'h> Member<'h> {
+    pub fn alloc<T>(&self, val: T) -> &'h T {
+        let result = self.arena.as_ref().unwrap().alloc(val) as *const _;
+        unsafe { &*result }
+    }
+}
+
+impl Drop for Member<'_> {
+    fn drop(&mut self) {
+        self.owner.0.lock().unwrap().extra.push(self.arena.take().unwrap());
+    }
+}
 
 impl Herd {
     pub fn new() -> Self {
-        let slots = iter::repeat_with(Bump::new)
-            .map(Mutex::new)
-            .take(num_cpus::get())
-            .collect();
-        Self {
-            slots,
-        }
+        Self::default()
     }
 
     pub fn reset(&mut self) {
-        for s in &mut self.slots {
-            s.get_mut().unwrap().reset();
+        for e in &mut self.0.get_mut().unwrap().extra {
+            e.reset();
         }
     }
 
-    fn choose<R, F: FnOnce(&Bump) -> R>(&self, f: F) -> R {
-        let offset = thread::current().id().as_u64().get() as usize % self.slots.len();
-        let seq = iter::repeat(self.slots.iter())
-            .flatten()
-            .skip(offset)
-            .take(self.slots.len());
-        for s in seq {
-            match s.try_lock() {
-                Ok(lock) => {
-                    return f(&lock);
-                }
-                Err(TryLockError::WouldBlock) => (),
-                Err(TryLockError::Poisoned(_)) => panic!("Poisoned herd member"),
-            }
+    pub fn get<'h>(&'h self) -> Member<'h> {
+        let mut lock = self.0.lock().unwrap();
+        let bump = lock.extra.pop().unwrap_or_default();
+        Member {
+            arena: Some(bump),
+            owner: self,
         }
-
-        // Should not really happen, but can't rule out really.
-        f(&self.slots[offset].lock().unwrap())
-    }
-
-    pub fn alloc<T>(&self, val: T) -> &T {
-        let res = self.choose(|arena| arena.alloc(val) as *const _);
-        unsafe { &*res }
     }
 }

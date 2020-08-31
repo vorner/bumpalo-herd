@@ -120,12 +120,17 @@ fn herd_single(b: &mut Bencher) {
 
     b.iter(|| {
         let mut head: Option<&_> = None;
-        for i in 0..CNT {
-            head = test::black_box(Some(arena.alloc(NodeRef {
-                value: i,
-                next: head,
-            })));
+        {
+            let member = arena.get();
+            for i in 0..CNT {
+                head = test::black_box(Some(member.alloc(NodeRef {
+                    value: i,
+                    next: head,
+                })));
+            }
         }
+
+        println!("{}", head.unwrap().value);
 
         arena.reset();
     });
@@ -138,9 +143,10 @@ fn herd_multi(b: &mut Bencher) {
     b.iter(|| {
         split(|cnt| {
             let mut head: Option<&_> = None;
+            let member = arena.get();
 
             for i in 0..cnt {
-                head = test::black_box(Some(arena.alloc(NodeRef {
+                head = test::black_box(Some(member.alloc(NodeRef {
                     value: i,
                     next: head,
                 })));
