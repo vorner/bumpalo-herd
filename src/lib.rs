@@ -3,12 +3,13 @@ use std::mem::ManuallyDrop;
 use std::ptr::NonNull;
 use std::sync::Mutex;
 
+// TODO: Prove that we don't ever drop the Bump when we shouldn't, even in case something panics.
+// Can eg. push panic?
+// TODO: Prove that our lifetime extending is correct.
+
 use bumpalo::Bump;
 
-#[derive(Default)]
-struct HerdInner {
-    extra: Vec<Box<Bump>>,
-}
+type HerdInner = Vec<Box<Bump>>;
 
 #[derive(Default)]
 pub struct Herd(Mutex<HerdInner>);
@@ -18,19 +19,18 @@ pub struct Member<'h> {
     owner: &'h Herd,
 }
 
-macro_rules! alloc {
+macro_rules! alloc_fn {
     ($(pub fn $name: ident<($($g: tt)*)>(&self, $($pname: ident: $pty: ty),*) -> $res: ty;)*) => {
         $(
             pub fn $name<$($g)*>(&self, $($pname: $pty),*) -> $res {
-                let result = self.arena.$name($($pname),*) as *mut _;
-                unsafe { &mut *result }
+                self.extend(self.arena.$name($($pname),*))
             }
         )*
     }
 }
 
 impl<'h> Member<'h> {
-    alloc! {
+    alloc_fn! {
         pub fn alloc<(T)>(&self, val: T) -> &'h mut T;
         pub fn alloc_with<(T, F: FnOnce() -> T)>(&self, f: F) -> &'h mut T;
         pub fn alloc_str<()>(&self, src: &str) -> &'h mut str;
@@ -48,12 +48,23 @@ impl<'h> Member<'h> {
         I: IntoIterator<Item = T>,
         I::IntoIter: ExactSizeIterator,
     {
-        let result = self.arena.as_ref().alloc_slice_fill_iter(iter) as *mut _;
-        unsafe { &mut *result }
+        self.extend(self.arena.alloc_slice_fill_iter(iter))
     }
 
     pub fn alloc_layout(&self, layout: Layout) -> NonNull<u8> {
         self.arena.as_ref().alloc_layout(layout)
+    }
+
+    fn extend<'s, T: ?Sized>(&'s self, v: &'s mut T) -> &'h mut T {
+        let result = v as *mut T;
+        unsafe { &mut *result }
+    }
+
+    // Note: This *can't* return `&'h Bump`. That way one could keep a reference, drop the Member
+    // and let another thread take it - that would allow both to allocate from the same Bump which
+    // would be UB.
+    pub fn as_bump(&self) -> &Bump {
+        &self.arena
     }
 }
 
@@ -61,7 +72,7 @@ impl Drop for Member<'_> {
     fn drop(&mut self) {
         let mut lock = self.owner.0.lock().unwrap();
         let member = unsafe { ManuallyDrop::take(&mut self.arena) };
-        lock.extra.push(member);
+        lock.push(member);
     }
 }
 
@@ -71,14 +82,14 @@ impl Herd {
     }
 
     pub fn reset(&mut self) {
-        for e in &mut self.0.get_mut().unwrap().extra {
+        for e in self.0.get_mut().unwrap().iter_mut() {
             e.reset();
         }
     }
 
     pub fn get(&self) -> Member<'_> {
         let mut lock = self.0.lock().unwrap();
-        let bump = lock.extra.pop().unwrap_or_default();
+        let bump = lock.pop().unwrap_or_default();
         Member {
             arena: ManuallyDrop::new(bump),
             owner: self,
