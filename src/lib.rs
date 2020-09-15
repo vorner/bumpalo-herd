@@ -1,4 +1,5 @@
 use std::alloc::Layout;
+use std::mem::ManuallyDrop;
 use std::ptr::NonNull;
 use std::sync::Mutex;
 
@@ -13,7 +14,7 @@ struct HerdInner {
 pub struct Herd(Mutex<HerdInner>);
 
 pub struct Member<'h> {
-    arena: Option<Box<Bump>>,
+    arena: ManuallyDrop<Box<Bump>>,
     owner: &'h Herd,
 }
 
@@ -21,7 +22,7 @@ macro_rules! alloc {
     ($(pub fn $name: ident<($($g: tt)*)>(&self, $($pname: ident: $pty: ty),*) -> $res: ty;)*) => {
         $(
             pub fn $name<$($g)*>(&self, $($pname: $pty),*) -> $res {
-                let result = self.arena.as_ref().unwrap().$name($($pname),*) as *mut _;
+                let result = self.arena.$name($($pname),*) as *mut _;
                 unsafe { &mut *result }
             }
         )*
@@ -47,18 +48,20 @@ impl<'h> Member<'h> {
         I: IntoIterator<Item = T>,
         I::IntoIter: ExactSizeIterator,
     {
-        let result = self.arena.as_ref().unwrap().alloc_slice_fill_iter(iter) as *mut _;
+        let result = self.arena.as_ref().alloc_slice_fill_iter(iter) as *mut _;
         unsafe { &mut *result }
     }
 
     pub fn alloc_layout(&self, layout: Layout) -> NonNull<u8> {
-        self.arena.as_ref().unwrap().alloc_layout(layout)
+        self.arena.as_ref().alloc_layout(layout)
     }
 }
 
 impl Drop for Member<'_> {
     fn drop(&mut self) {
-        self.owner.0.lock().unwrap().extra.push(self.arena.take().unwrap());
+        let mut lock = self.owner.0.lock().unwrap();
+        let member = unsafe { ManuallyDrop::take(&mut self.arena) };
+        lock.extra.push(member);
     }
 }
 
@@ -77,7 +80,7 @@ impl Herd {
         let mut lock = self.0.lock().unwrap();
         let bump = lock.extra.pop().unwrap_or_default();
         Member {
-            arena: Some(bump),
+            arena: ManuallyDrop::new(bump),
             owner: self,
         }
     }
