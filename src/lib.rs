@@ -1,3 +1,9 @@
+#![doc(
+    html_root_url = "https://docs.rs/bumpalo-herd/0.1.0/",
+    test(attr(deny(warnings)))
+)]
+#![warn(missing_docs)]
+
 use std::alloc::Layout;
 use std::mem::ManuallyDrop;
 use std::ptr::NonNull;

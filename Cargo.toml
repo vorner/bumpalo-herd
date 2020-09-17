@@ -12,3 +12,4 @@ crossbeam-utils = "0.7"
 num_cpus = "1"
 
 [dev-dependencies]
+version-sync = "~0.8"
