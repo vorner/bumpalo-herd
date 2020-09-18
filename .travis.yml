@@ -12,7 +12,8 @@ os:
 before_script:
     - |
       (travis_wait rustup component add rustfmt-preview || true) &&
-      (travis_wait rustup component add clippy-preview || true)
+      (travis_wait rustup component add clippy-preview || true) &&
+      (travis_wait rustup component add miri-preview || true)
 
 script:
     - |

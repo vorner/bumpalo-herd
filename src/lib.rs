@@ -190,3 +190,39 @@ impl Drop for Member<'_> {
         lock.push(member);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex;
+
+    use super::*;
+
+    use crossbeam_utils::thread;
+
+    // Doesn't test much in ordinary tests, but miri can check it
+    #[test]
+    fn alloc_miri() {
+        let mut herd = Herd::new();
+
+        let v = Mutex::new(Vec::new());
+
+        thread::scope(|s| {
+            s.spawn(|_| {
+                let bump = herd.get();
+                v.lock().unwrap().push(bump.alloc(42));
+            });
+        }).unwrap();
+
+        let sum: u32 = v.into_inner()
+            .unwrap()
+            .iter()
+            .map(|i| **i)
+            .sum();
+        assert_eq!(42, sum);
+
+        herd.reset();
+
+        let hello = herd.get().alloc_str("hello");
+        assert_eq!("hello", hello);
+    }
+}
