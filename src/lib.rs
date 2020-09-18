@@ -211,13 +211,10 @@ mod tests {
                 let bump = herd.get();
                 v.lock().unwrap().push(bump.alloc(42));
             });
-        }).unwrap();
+        })
+        .unwrap();
 
-        let sum: u32 = v.into_inner()
-            .unwrap()
-            .iter()
-            .map(|i| **i)
-            .sum();
+        let sum: u32 = v.into_inner().unwrap().iter().map(|i| **i).sum();
         assert_eq!(42, sum);
 
         herd.reset();

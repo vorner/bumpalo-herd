@@ -57,7 +57,8 @@ fn split<F: Fn(usize) + Sync>(f: F) {
                 f(cnt);
             });
         }
-    }).unwrap();
+    })
+    .unwrap();
 }
 
 #[bench]
