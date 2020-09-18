@@ -45,10 +45,6 @@ use std::mem::ManuallyDrop;
 use std::ptr::NonNull;
 use std::sync::Mutex;
 
-// TODO: Prove that we don't ever drop the Bump when we shouldn't, even in case something panics.
-// Can eg. push panic?
-// TODO: Prove that our lifetime extending is correct.
-
 use bumpalo::Bump;
 
 type HerdInner = Vec<Box<Bump>>;
@@ -162,6 +158,18 @@ impl<'h> Member<'h> {
 }
 
 impl<'h> Member<'h> {
+    /*
+     * We are extending the lifetime past what Rust believes is right. This is OK, because while
+     * the Member can be dropped and we move the Box, the Bump inside stays at the same place.
+     * Therefore, it doesn't even "notice" in practice that anything happened and the Bump actually
+     * does live for 'h.
+     *
+     * To ensure that, we:
+     * * Move it back into the herd on drop.
+     * * If it is not dropped, it has to be *leaked* (therefore stays at one place in memory
+     *   forever), which is bad, but doesn't cause UB.
+     * * It can't be taken out (we don't provide any &mut or anything).
+     */
     fn extend<'s, T: ?Sized>(&'s self, v: &'s mut T) -> &'h mut T {
         let result = v as *mut T;
         unsafe { &mut *result }
@@ -170,6 +178,9 @@ impl<'h> Member<'h> {
     // Note: This *can't* return `&'h Bump`. That way one could keep a reference, drop the Member
     // and let another thread take it - that would allow both to allocate from the same Bump which
     // would be UB.
+    //
+    // It also can't return anything like &mut Bump, because then people could reset memory they
+    // don't own (from previous borrow of the Bump).
     /// Access the [`Bump`] inside.
     ///
     /// This can be used to get the [`Bump`] allocator itself, if something needs the specific
@@ -185,7 +196,18 @@ impl<'h> Member<'h> {
 
 impl Drop for Member<'_> {
     fn drop(&mut self) {
+        // If the unwrap panics, we will just leak, not destroy, the arena.
         let mut lock = self.owner.0.lock().unwrap();
+        /*
+         * Safety considerations.
+         *
+         * The only requirement is that the self.arena is not ever used again. This is trivial, we
+         * are in the destructor.
+         *
+         * We also need to ensure the member is not dropped in here (otherwise we would destroy
+         * memory that's still lifetime-OK according to the `'h`. But push doesn't panic
+         * (allocators are disallowed from panicking).
+         */
         let member = unsafe { ManuallyDrop::take(&mut self.arena) };
         lock.push(member);
     }
