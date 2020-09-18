@@ -223,6 +223,7 @@ mod tests {
 
     // Doesn't test much in ordinary tests, but miri can check it
     #[test]
+    #[cfg(not(all(miri, target_os = "windows")))]
     fn alloc_miri() {
         let mut herd = Herd::new();
 
