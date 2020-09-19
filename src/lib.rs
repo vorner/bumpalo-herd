@@ -266,6 +266,8 @@ impl Drop for Member<'_> {
 }
 
 #[cfg(test)]
+// We disable stuff on that platform and are lazy to disable all the imports too, this is shorter.
+#[cfg_attr(all(miri, target_os = "windows"), allow(unused_imports))]
 mod tests {
     use std::sync::Mutex;
 
