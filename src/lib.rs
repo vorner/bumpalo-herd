@@ -1,5 +1,5 @@
 #![doc(
-    html_root_url = "https://docs.rs/bumpalo-herd/0.1.0/",
+    html_root_url = "https://docs.rs/bumpalo-herd/0.1.1/",
     test(attr(deny(warnings)))
 )]
 #![warn(missing_docs)]
