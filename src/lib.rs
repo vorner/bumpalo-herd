@@ -10,13 +10,19 @@
 //! allocate a lot of small objects. Additionally, it helps solve some of Rust lifetime issues.
 //!
 //! Nevertheless, it is not [`Sync`], which makes it hard to use in many situations ‒ like in
-//! [`rayon`](https://docs.rs/rayon) iterators or scoped threads.
+//! [`rayon`] iterators or scoped threads.
 //!
 //! This library extends [`bumpalo`] with the [`Herd`] type. It represents a group of the [`Bump`]
 //! allocators. Each thread then can get its own instance to allocate from. Unlike just creating
 //! one for each thread the convenient way, the allocated memory can survive past the
 //! thread/iterator termination, because the lifetime is tied to the [`Herd`] itself (the [`Bump`]
 //! is rescued from the thread behind the scenes).
+//!
+//! # Examples
+//!
+//! We use the bump allocation inside a [`rayon`] iterator. The `map_init` allows us to grab an
+//! arena and use it in each invocation cheaply, but unlike `Bump::new` allocated one, the memory
+//! is usable after the iterator run to its termination.
 //!
 //! ```rust
 //! # use bumpalo_herd::Herd;
@@ -27,18 +33,56 @@
 //!
 //! let ints: Vec<&mut usize> = (0usize..1_000)
 //!     .into_par_iter()
-//!     .map_init(|| herd.get(), |bump, i| bump.alloc(i))
+//!     .map_init(|| herd.get(), |bump, i| {
+//!         // We have an allocator here we can play with.
+//!         // The computation would be something bigger, sure.
+//!         bump.alloc(i)
+//!     })
 //!     .collect();
 //!
-//! // Available here even though the iterator already ended.
+//! // Available here even though the iterator has already ended.
 //! dbg!(ints);
 //!
 //! // Deallocate the memory
 //! herd.reset();
 //!
-//! // Won't work any more
+//! // Won't work any more, memory gone
+//! // (don't worry, Rust won't let us)
 //! // dbg!(ints);
 //! ```
+//!
+//! Similar thing can be done with [scoped threads] from [`crossbeam_utils`]. If we got our
+//! allocator through `Bump::new`, we wouldn't be allowed to use the results in the other thread.
+//!
+//! ```rust
+//! # use std::sync::mpsc;
+//! # use bumpalo_herd::Herd;
+//! # use crossbeam_utils::thread;
+//!
+//! let herd = Herd::new();
+//! let (sender, receiver) = mpsc::sync_channel(10);
+//!
+//! // Scoped threads from crossbeam_utils.
+//! // Producer and consumer, can send data from one to another.
+//! // The data lives long enough.
+//! thread::scope(|s| {
+//!     s.spawn(|_| {
+//!         let bump = herd.get();
+//!         let s = bump.alloc_str("Hello");
+//!         sender.send(s).unwrap();
+//!         drop(sender); // Close the channel.
+//!     });
+//!     s.spawn(|_| {
+//!         for s in receiver {
+//!             dbg!(s);
+//!         }
+//!     });
+//! }).unwrap();
+//! ```
+//!
+//! [rayon]: https://docs.rs/rayon
+//! [crossbeam_utils]: https://docs.rs/crossbeam_utils
+//! [scoped threads]: https://docs.rs/crossbeam-utils/0.7.*/crossbeam_utils/thread/index.html
 
 use std::alloc::Layout;
 use std::mem::ManuallyDrop;
@@ -89,6 +133,14 @@ impl Herd {
     /// As the [`Herd`] is [`Sync`], it is possible to call this from the worker threads. The
     /// [`Member`] is a proxy around [`Bump`], allowing to allocate objects with lifetime of the
     /// [`Herd`] (therefore, the allocated objects can live longer than the [`Member`] itself).
+    ///
+    /// # Performance note
+    ///
+    /// This is not cheap and is not expected to happen often. It contains a mutex.
+    ///
+    /// The expected usage pattern is that each worker thread (or similar entity) grabs one
+    /// allocator *once*, at its start and uses it through its lifetime, not that it would call
+    /// `get` on each allocation.
     pub fn get(&self) -> Member<'_> {
         let mut lock = self.0.lock().unwrap();
         let bump = lock.pop().unwrap_or_default();
