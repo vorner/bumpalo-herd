@@ -17,7 +17,7 @@ cargo doc --no-deps
 # Sometimes nightly doesn't have clippy or rustfmt, so don't try that there.
 if [ "$TRAVIS_RUST_VERSION" = nightly ] ; then
 	cargo test --benches
-	cargo miri test -- -- miri
+	cargo miri test miri
 	exit
 fi
 
