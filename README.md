@@ -1,7 +1,7 @@
 # Bumpalo-herd
 
 [![Actions Status](https://github.com/vorner/bumpalo-herd/workflows/test/badge.svg)](https://github.com/vorner/bumpalo-herd/actions)
-[![codecov](https://codecov.io/gh/vorner/bumpalo-herd/branch/master/graph/badge.svg?token=3KA3R2D9fV)](https://codecov.io/gh/vorner/bumpalo-herd)
+[![codecov](https://codecov.io/gh/vorner/bumpalo-herd/branch/main/graph/badge.svg?token=3KA3R2D9fV)](https://codecov.io/gh/vorner/bumpalo-herd)
 [![docs](https://docs.rs/bumpalo-herd/badge.svg)](https://docs.rs/bumpalo-herd)
 
 The [bumpalo](https://crates.io/crates/bumpalo) offers a good speedup for
