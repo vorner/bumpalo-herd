@@ -1,6 +1,8 @@
 # Bumpalo-herd
 
-[![Travis Build Status](https://api.travis-ci.org/vorner/bumpalo-herd.svg?branch=main)](https://travis-ci.org/vorner/bumpalo-herd)
+[![Actions Status](https://github.com/vorner/bumpalo-herd/workflows/test/badge.svg)](https://github.com/vorner/bumpalo-herd/actions)
+[![codecov](https://codecov.io/gh/vorner/bumpalo-herd/branch/master/graph/badge.svg?token=3KA3R2D9fV)](https://codecov.io/gh/vorner/bumpalo-herd)
+[![docs](https://docs.rs/bumpalo-herd/badge.svg)](https://docs.rs/bumpalo-herd)
 
 The [bumpalo](https://crates.io/crates/bumpalo) offers a good speedup for
 certain application by providing a bump allocator. But it is not well suited for
