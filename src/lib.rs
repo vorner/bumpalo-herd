@@ -1,7 +1,4 @@
-#![doc(
-    html_root_url = "https://docs.rs/bumpalo-herd/0.1.1/",
-    test(attr(deny(warnings)))
-)]
+#![doc(test(attr(deny(warnings))))]
 #![warn(missing_docs)]
 
 //! The Bumpalo Herd
@@ -80,8 +77,8 @@
 //! }).unwrap();
 //! ```
 //!
-//! [rayon]: https://docs.rs/rayon
-//! [crossbeam_utils]: https://docs.rs/crossbeam_utils
+//! [`rayon`]: https://docs.rs/rayon
+//! [`crossbeam_utils`]: https://docs.rs/crossbeam_utils
 //! [scoped threads]: https://docs.rs/crossbeam-utils/0.7.*/crossbeam_utils/thread/index.html
 
 use std::alloc::Layout;
