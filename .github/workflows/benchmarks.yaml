@@ -2,7 +2,7 @@ on:
   pull_request:
   push:
     branches:
-      - master
+      - main
   # Run once a week to preserve the cache
   # (even though it still feels the cache gets lost sometimes?)
   schedule:
