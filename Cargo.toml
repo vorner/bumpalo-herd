@@ -1,6 +1,6 @@
 [package]
 name = "bumpalo-herd"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Michal 'vorner' Vaner <vorner@vorner.cz>"]
 edition = "2018"
 documentation = "https://docs.rs/bumpalo-herd"
