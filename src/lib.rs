@@ -99,7 +99,7 @@ type HerdInner = Vec<Box<Bump>>;
 ///
 /// The allocators are created on demand ‒ if no existing ones are cached inside, new one is
 /// created.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Herd(Mutex<HerdInner>);
 
 impl Herd {
@@ -163,6 +163,7 @@ impl Herd {
 ///   welcome to send a PR.
 /// * The allocation methods are not documented here. They however correspond 1:1 to the same-named
 ///   methods on [`Bump`]. See their documentation.
+#[derive(Debug)]
 pub struct Member<'h> {
     arena: ManuallyDrop<Box<Bump>>,
     owner: &'h Herd,
