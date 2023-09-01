@@ -10,6 +10,9 @@ repository = "https://github.com/vorner/bumpalo-herd"
 categories = ["memory-management", "rust-patterns"]
 description = "Support for bumpalo in scoped threads & rayon"
 
+[features]
+allocator_api = ["bumpalo/allocator_api"]
+
 [dependencies]
 bumpalo = "~3"
 

@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "allocator_api", feature(allocator_api))]
 #![doc(test(attr(deny(warnings))))]
 #![warn(missing_docs)]
 
@@ -76,6 +77,12 @@
 //!     });
 //! }).unwrap();
 //! ```
+//!
+//! # Nightly `allocator_api` support
+//!
+//! Support for the unstable `allocator_api` feature may be enabled with the matching
+//! `allocator_api` feature flag. This forwards to [`bumpalo`]'s own `allocator_api` feature flag.
+//! Note that because this feature is unstable, it is exempt from any semver stability guarantees.
 //!
 //! [`rayon`]: https://docs.rs/rayon
 //! [`crossbeam_utils`]: https://docs.rs/crossbeam_utils
