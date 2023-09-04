@@ -15,6 +15,6 @@ bumpalo = "~3"
 
 [dev-dependencies]
 bumpalo = { version = "~3", features = ["collections"] }
-crossbeam-utils = "~0.7"
+crossbeam-utils = "0.8.11"
 num_cpus = "~1"
 rayon = "~1"
