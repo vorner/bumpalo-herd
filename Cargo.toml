@@ -13,6 +13,11 @@ description = "Support for bumpalo in scoped threads & rayon"
 [dependencies]
 bumpalo = "~3"
 
+# This dependency provides a version of the unstable nightly Rust `Allocator`
+# trait on stable Rust. Enabling this feature means that `bumpalo` will
+# implement its `Allocator` trait.
+allocator-api2 = { version = "0.2.8", default-features = false, optional = true }
+
 [dev-dependencies]
 bumpalo = "~3"
 crossbeam-utils = "~0.8"
@@ -27,6 +32,6 @@ default = [
 collections = ["bumpalo/collections"]
 boxed = ["bumpalo/boxed"]
 allocator_api = ["bumpalo/allocator_api"]
-allocator-api2 = ["bumpalo/allocator-api2"]
+allocator-api2 = ["bumpalo/allocator-api2", "dep:allocator-api2"]
 serde = ["bumpalo/serde"]
 std = ["bumpalo/std"]

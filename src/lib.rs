@@ -1,5 +1,6 @@
 #![doc(test(attr(deny(warnings))))]
 #![warn(missing_docs)]
+#![cfg_attr(feature = "allocator_api", feature(allocator_api))]
 
 //! The Bumpalo Herd
 //!
@@ -85,6 +86,12 @@ use std::alloc::Layout;
 use std::mem::ManuallyDrop;
 use std::ptr::NonNull;
 use std::sync::Mutex;
+
+#[cfg(feature = "allocator_api")]
+use std::alloc::{AllocError, Allocator};
+
+#[cfg(all(feature = "allocator-api2", not(feature = "allocator_api")))]
+use allocator_api2::alloc::{AllocError, Allocator};
 
 use bumpalo::Bump;
 
@@ -260,6 +267,49 @@ impl Drop for Member<'_> {
          */
         let member = unsafe { ManuallyDrop::take(&mut self.arena) };
         lock.push(member);
+    }
+}
+
+#[cfg(any(feature = "allocator_api", feature = "allocator-api2"))]
+unsafe impl Allocator for &Member<'_> {
+    #[inline]
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        self.as_bump().allocate(layout)
+    }
+
+    #[inline]
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        self.as_bump().deallocate(ptr, layout)
+    }
+
+    #[inline]
+    unsafe fn shrink(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        self.as_bump().shrink(ptr, old_layout, new_layout)
+    }
+
+    #[inline]
+    unsafe fn grow(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        self.as_bump().grow(ptr, old_layout, new_layout)
+    }
+
+    #[inline]
+    unsafe fn grow_zeroed(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        self.as_bump().grow_zeroed(ptr, old_layout, new_layout)
     }
 }
 
