@@ -14,7 +14,19 @@ description = "Support for bumpalo in scoped threads & rayon"
 bumpalo = "~3"
 
 [dev-dependencies]
-bumpalo = { version = "~3", features = ["collections"] }
+bumpalo = "~3"
 crossbeam-utils = "~0.8"
 num_cpus = "~1"
 rayon = "~1"
+
+[features]
+default = [
+  "collections", # Exists for backward compatibility. Please remove this line at 0.2.0 release.
+  "bumpalo/default"
+]
+collections = ["bumpalo/collections"]
+boxed = ["bumpalo/boxed"]
+allocator_api = ["bumpalo/allocator_api"]
+allocator-api2 = ["bumpalo/allocator-api2"]
+serde = ["bumpalo/serde"]
+std = ["bumpalo/std"]
