@@ -3,7 +3,7 @@
 
 //! The Bumpalo Herd
 //!
-//! The [`bumpalo`] library let's one use a bump allocator, an interesting and fast strategy to
+//! The [`bumpalo`] library lets one use a bump allocator, an interesting and fast strategy to
 //! allocate a lot of small objects. Additionally, it helps solve some of Rust lifetime issues.
 //!
 //! Nevertheless, it is not [`Sync`], which makes it hard to use in many situations ‒ like in
