@@ -1,3 +1,7 @@
+# 0.1.3
+
+* Allow for an allocator to panic (#17).
+
 # 0.1.2
 
 * Add `Debug` trait.

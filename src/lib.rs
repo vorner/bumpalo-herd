@@ -248,6 +248,7 @@ impl Drop for Member<'_> {
     fn drop(&mut self) {
         // If the unwrap panics, we will just leak, not destroy, the arena.
         let mut lock = self.owner.0.lock().unwrap();
+        lock.reserve(1);
         /*
          * Safety considerations.
          *
@@ -255,8 +256,8 @@ impl Drop for Member<'_> {
          * are in the destructor.
          *
          * We also need to ensure the member is not dropped in here (otherwise we would destroy
-         * memory that's still lifetime-OK according to the `'h`. But push doesn't panic
-         * (allocators are disallowed from panicking).
+         * memory that's still lifetime-OK according to the `'h`. But push doesn't panic (as long
+         * as there's capacity, see above).
          */
         let member = unsafe { ManuallyDrop::take(&mut self.arena) };
         lock.push(member);
